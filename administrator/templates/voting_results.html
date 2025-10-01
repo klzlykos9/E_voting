@@ -1,0 +1,63 @@
+{% extends 'root.html' %}
+{% block content %}
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-DuH/WEuXt49ptfSes9ovLMdT3bcJjxil5QI15y5lpCWNI3tevR8n7DC8bXEkckXt4I28lXxUgZtOZUjrcHJ/DQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+</head>
+<section class="content">
+  <div class="row">
+    <div class="col-xs-12">
+      <div class="box">
+        <div class="box-header with-border">
+            <h4 class="modal-title">
+                <b><i class="fas fa-poll-h"></i> Blockchains of Votes <i class="far fa-check-circle"></i></b> 🗳️
+            </h4>
+                    </div>
+        <div class="box-body">
+          <table id="example1" class="table table-bordered table-hover table-striped">
+            <thead style="background-color: #222D32; color:white;">
+                <tr>
+                    <th>Index</th>
+                    <th>Previous Hash</th>
+                    <th>Timestamp</th>
+                    <th>Nonce</th>
+                    <th>Hash</th>
+                    <th>Transactions</th>
+                </tr>
+            </thead>
+            <tbody style="font-weight: normal;">
+                {% for block in blockchain %}
+                    <tr>
+                        <td>{{ block.index }}</td>
+                         <td>
+                            <span title="{{ block.previous_hash }}">{{ block.previous_hash|truncatechars:20 }}</span>
+                         </td>
+                        <td>{{ block.timestamp }}</td>
+                        <td>{{ block.nonce }}</td>
+                        <td>
+                            <span title="{{ block.hash }}">{{ block.hash|truncatechars:20 }}</span>
+                        </td>
+                        <td>
+                            <ul>
+                                {% for transaction in block.transactions %}
+                                    <li>
+                                        <strong>Voter:</strong> {{ transaction.voter_name }} ({{ transaction.voter_phone }}),  <br>
+                                        <strong>Candidate:</strong> {{ transaction.candidate_name }} ({{ transaction.position_name }})
+                                        <br>
+                                        <strong>Photo:</strong> <img src="{{ transaction.candidate_photo }}" alt="{{ transaction.candidate_name }}" width="50" height="50">
+                                        <br>
+                                        <strong>Bio:</strong> {{ transaction.candidate_bio }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}

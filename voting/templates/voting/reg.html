@@ -1,0 +1,155 @@
+{% extends "voting/base.html" %}
+{% block content %}
+<style>
+    .camera-capture {
+        width: 100%;
+        max-width: 400px;
+        margin: 10px 0;
+    }
+    .captured-images {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    .captured-image {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border: 1px solid #ddd;
+    }
+</style>
+
+<div class="login-box">
+    <div class="login-logo">
+        <b>Voting System</b>
+    </div>
+
+    <div class="login-box-body">
+        <form id="registrationForm" action="{% url 'account_register' %}" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="modal-body">
+                <!-- Existing user form fields -->
+                {% for field in form1 %}
+                <div class="form-group has-feedback">
+                    <span class="text-danger">{{field.errors}}</span>
+                    {{field.label_tag}}
+                    {{field}}
+                </div>
+                {% endfor %}
+
+                <!-- Existing voter form fields -->
+                {% for field in form2 %}
+                <div class="form-group has-feedback">
+                    <span class="text-danger">{{field.errors}}</span>
+                    {{field.label_tag}}
+                    {{field}}
+                </div>
+                {% endfor %}
+
+                <!-- Camera Capture Section -->
+                <div class="form-group">
+                    <label><strong>Face Image Capture (10 Images Required with different angles) </strong></label>
+                    
+                    <!-- Camera Preview -->
+                    <video id="camera" class="camera-capture" autoplay></video>
+                    <button type="button" id="captureBtn" class="btn btn-primary">Capture Image</button>
+                    
+                    <!-- Captured Images Container -->
+                    <div id="capturedImagesContainer" class="captured-images"></div>
+                    
+                    <!-- Hidden inputs to store captured images -->
+                    <div id="hiddenImageInputs"></div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-6">
+                        <button type="submit" class="btn btn-primary btn-block btn-flat" name="login">
+                            <i class="fa fa-user-plus"></i> Register
+                        </button>
+                    </div>
+                    <div class="pull-right col-xs-6">
+                        <a class="btn btn-success btn-block btn-flat" href="{% url 'account_login' %}">
+                            <i class="fa fa-sign-in"></i> Log In
+                        </a>
+                    </div>
+                </div> 
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const video = document.getElementById('camera');
+    const captureBtn = document.getElementById('captureBtn');
+    const capturedImagesContainer = document.getElementById('capturedImagesContainer');
+    const hiddenImageInputs = document.getElementById('hiddenImageInputs');
+    let capturedImages = 0;
+
+    // Request camera access
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(function(stream) {
+            video.srcObject = stream;
+        })
+        .catch(function(err) {
+            alert('Error accessing camera: ' + err);
+        });
+
+    // Capture image function
+    captureBtn.addEventListener('click', function() {
+        if (capturedImages >= 10) {
+            alert('You have already captured 10 images');
+            return;
+        }
+
+        // Create canvas to capture image
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+
+        // Convert canvas to blob
+        canvas.toBlob(function(blob) {
+            // Create image element
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(blob);
+            img.className = 'captured-image';
+
+            // Create hidden file input
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.name = `face_image_${capturedImages + 1}`;
+            fileInput.style.display = 'none';
+
+            // Convert blob to File object
+            const file = new File([blob], `face_image_${capturedImages + 1}.jpg`, { type: 'image/jpeg' });
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+
+            // Append to containers
+            capturedImagesContainer.appendChild(img);
+            hiddenImageInputs.appendChild(fileInput);
+
+            capturedImages++;
+
+            // Disable capture button if 10 images captured
+            if (capturedImages >= 10) {
+                captureBtn.disabled = true;
+                captureBtn.textContent = 'Images Captured';
+            }
+        }, 'image/jpeg');
+    });
+
+    // Form submission validation
+    document.getElementById('registrationForm').addEventListener('submit', function(event) {
+        if (capturedImages < 10) {
+            event.preventDefault();
+            alert('Please capture 10 images before submitting');
+        }
+    });
+});
+</script>
+{% endblock content %}

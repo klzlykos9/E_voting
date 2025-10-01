@@ -1,0 +1,202 @@
+<div class="camera-container">
+    <style>
+      .camera-container {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 15px;
+      }
+      
+      #video-container {
+        width: 100%;
+        max-width: 640px;
+        margin: 0 auto;
+        background: #000;
+        position: relative;
+      }
+      
+      #videoElement {
+        width: 100%;
+        height: auto;
+      }
+      
+      .camera-controls {
+        margin: 15px 0;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+      
+      .photos-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
+        margin-top: 20px;
+      }
+      
+      .photo-preview {
+        width: 100%;
+        aspect-ratio: 1;
+        object-fit: cover;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+      }
+      
+      .progress-bar {
+        width: 100%;
+        height: 20px;
+        background-color: #f0f0f0;
+        border-radius: 10px;
+        margin: 10px 0;
+      }
+      
+      .progress {
+        height: 100%;
+        background-color: #4CAF50;
+        border-radius: 10px;
+        transition: width 0.3s ease;
+      }
+      
+      .error-message {
+        color: #ff0000;
+        text-align: center;
+        margin: 10px 0;
+        padding: 10px;
+        background-color: #ffe6e6;
+        border-radius: 4px;
+        display: none;
+      }
+    </style>
+  
+    <div id="video-container">
+      <video id="videoElement" autoplay playsinline></video>
+    </div>
+  
+    <div class="progress-bar">
+      <div class="progress" style="width: 0%"></div>
+    </div>
+  
+    <div class="error-message" id="errorMessage"></div>
+  
+    <div class="camera-controls">
+      <button id="startCamera" class="btn btn-primary btn-sm btn-flat">
+        <i class="fa fa-camera"></i> Start Camera
+      </button>
+      <button id="capturePhoto" class="btn btn-success btn-sm btn-flat" disabled>
+        <i class="fa fa-camera"></i> Capture Photo (<span id="photoCount">0</span>/10)
+      </button>
+      <button id="stopCamera" class="btn btn-danger btn-sm btn-flat" disabled>
+        <i class="fa fa-stop"></i> Stop Camera
+      </button>
+    </div>
+  
+    <div class="photos-grid" id="photosGrid"></div>
+  
+    <input type="hidden" id="photoData" name="photo_data">
+  </div>
+  
+  <script>
+  let stream = null;
+  let photoCount = 0;
+  const MAX_PHOTOS = 10;
+  const videoElement = document.getElementById('videoElement');
+  const startButton = document.getElementById('startCamera');
+  const captureButton = document.getElementById('capturePhoto');
+  const stopButton = document.getElementById('stopCamera');
+  const photosGrid = document.getElementById('photosGrid');
+  const errorMessage = document.getElementById('errorMessage');
+  const photoInput = document.getElementById('photoData');
+  const photoCountDisplay = document.getElementById('photoCount');
+  const progressBar = document.querySelector('.progress');
+  
+  async function startCamera() {
+      try {
+          stream = await navigator.mediaDevices.getUserMedia({ 
+              video: { 
+                  facingMode: 'user',
+                  width: { ideal: 640 },
+                  height: { ideal: 480 }
+              } 
+          });
+          videoElement.srcObject = stream;
+          startButton.disabled = true;
+          captureButton.disabled = false;
+          stopButton.disabled = false;
+          errorMessage.style.display = 'none';
+      } catch (err) {
+          showError('Unable to access camera. Please ensure you have given permission.');
+      }
+  }
+  
+  function stopCamera() {
+      if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+          videoElement.srcObject = null;
+          startButton.disabled = false;
+          captureButton.disabled = true;
+          stopButton.disabled = true;
+      }
+  }
+  
+  function capturePhoto() {
+      if (photoCount >= MAX_PHOTOS) {
+          showError('Maximum number of photos reached');
+          return;
+      }
+  
+      const canvas = document.createElement('canvas');
+      canvas.width = videoElement.videoWidth;
+      canvas.height = videoElement.videoHeight;
+      canvas.getContext('2d').drawImage(videoElement, 0, 0);
+      
+      // Convert to blob and create preview
+      canvas.toBlob((blob) => {
+          // Create preview
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(blob);
+          img.className = 'photo-preview';
+          photosGrid.appendChild(img);
+  
+          // Update photo count and progress
+          photoCount++;
+          photoCountDisplay.textContent = photoCount;
+          progressBar.style.width = `${(photoCount / MAX_PHOTOS) * 100}%`;
+  
+          // Store photo data for form submission
+          const formData = new FormData();
+          formData.append('photo', blob, `face_${photoCount}.jpg`);
+          formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+  
+          // Send to server
+          fetch('{% url "upload_voter_photo" %}', {
+              method: 'POST',
+              body: formData
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (!data.success) {
+                  showError('Failed to upload photo');
+              }
+          })
+          .catch(() => {
+              showError('Failed to upload photo');
+          });
+  
+          if (photoCount >= MAX_PHOTOS) {
+              captureButton.disabled = true;
+          }
+      }, 'image/jpeg');
+  }
+  
+  function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.style.display = 'block';
+      setTimeout(() => {
+          errorMessage.style.display = 'none';
+      }, 3000);
+  }
+  
+  startButton.addEventListener('click', startCamera);
+  captureButton.addEventListener('click', capturePhoto);
+  stopButton.addEventListener('click', stopCamera);
+  </script>
+  </div>
